@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #09090b;
+  color: #e7e9eb;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #fbbf24;
+}
+
+/* Di HP: font 16px mencegah iOS zoom otomatis saat input difokuskan,
+   tinggi minimum 44px membuat kolom mudah disentuh jari. */
+@media (max-width: 767px) {
+  input:not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+}

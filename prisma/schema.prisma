@@ -1,0 +1,65 @@
+// Skema database GudangTinta — setara dengan versi migration Laravel sebelumnya.
+// Ganti "provider" di bawah ke "postgresql" kalau tidak pakai MySQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tinta {
+  id               Int      @id @default(autoincrement())
+  namaCustomer     String   @map("nama_customer")
+  namaCetakan      String   @map("nama_cetakan")
+  tcPantone        String?  @map("tc_pantone")
+  jumlahStock      Decimal  @map("jumlah_stock") @db.Decimal(8, 2) // stok tersedia saat ini (kg)
+  gambarProduk     String?  @map("gambar_produk") // path relatif di /public/uploads
+  lokasiKolom      String   @map("lokasi_kolom") // sumbu X, contoh: 2A
+  lokasiBaris      String   @map("lokasi_baris") // sumbu Y, contoh: III
+  lokasiKedalaman  Int      @map("lokasi_kedalaman") // sumbu Z, contoh: 7
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  komposisi KomposisiTinta[]
+  transaksi TransaksiPeminjaman[]
+
+  @@index([namaCustomer, namaCetakan])
+  @@map("tintas")
+}
+
+model KomposisiTinta {
+  id          Int    @id @default(autoincrement())
+  tintaId     Int    @map("tinta_id")
+  warnaDasar  String @map("warna_dasar")
+  persentase  Int // 0-100
+
+  tinta Tinta @relation(fields: [tintaId], references: [id], onDelete: Cascade)
+
+  @@map("komposisi_tintas")
+}
+
+enum StatusPeminjaman {
+  dipinjam
+  selesai
+}
+
+model TransaksiPeminjaman {
+  id             Int              @id @default(autoincrement())
+  tintaId        Int              @map("tinta_id")
+  namaPeminjam   String           @map("nama_peminjam") // nama operator
+  beratPinjam    Decimal          @map("berat_pinjam") @db.Decimal(8, 2) // stok saat dipinjam
+  beratKembali   Decimal?         @map("berat_kembali") @db.Decimal(8, 2) // hasil timbang ulang
+  beratTerpakai  Decimal?         @map("berat_terpakai") @db.Decimal(8, 2) // beratPinjam - beratKembali
+  tanggalPinjam  DateTime         @map("tanggal_pinjam")
+  tanggalKembali DateTime?        @map("tanggal_kembali")
+  status         StatusPeminjaman @default(dipinjam)
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  tinta Tinta @relation(fields: [tintaId], references: [id], onDelete: Cascade)
+
+  @@index([status, tanggalPinjam])
+  @@map("transaksi_peminjamans")
+}
