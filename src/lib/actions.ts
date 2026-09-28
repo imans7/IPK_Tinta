@@ -4,8 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { LOKASI_KOLOM, LOKASI_BARIS, LOKASI_KEDALAMAN } from "@/lib/lokasi";
 import { wajibLogin, wajibAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile, unlink } from "fs/promises";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+// Konfigurasi Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 type KomposisiInput = { warnaDasar: string; persentase: number };
 
@@ -39,20 +45,34 @@ export async function simpanTinta(formData: FormData): Promise<{ id?: number; er
   const totalPersen = komposisi.reduce((sum, k) => sum + Number(k.persentase || 0), 0);
   if (totalPersen !== 100) return { error: `Total komposisi warna harus 100% (saat ini ${totalPersen}%).` };
 
-  // Upload foto (kalau ada file baru dipilih)
+  // Upload foto ke Cloudinary
   let gambarProduk = String(formData.get("fotoLama") ?? "") || null;
   const foto = formData.get("foto") as File | null;
+  
   if (foto && foto.size > 0) {
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "tinta");
-    await mkdir(uploadDir, { recursive: true });
-    const namaFile = `${Date.now()}-${foto.name.replace(/\s+/g, "-")}`;
     const buffer = Buffer.from(await foto.arrayBuffer());
-    await writeFile(path.join(uploadDir, namaFile), buffer);
+    const base64Image = `data:${foto.type};base64,${buffer.toString("base64")}`;
 
-    if (gambarProduk) {
-      await unlink(path.join(process.cwd(), "public", gambarProduk)).catch(() => {});
+    try {
+      const uploadResult = await cloudinary.uploader.upload(base64Image, {
+        folder: "gudang_tinta",
+      });
+
+      // Jika ada gambar lama dan itu dari Cloudinary, hapus gambar lamanya
+      if (gambarProduk && gambarProduk.includes("cloudinary.com")) {
+        const urlParts = gambarProduk.split("/");
+        const fileName = urlParts.pop()?.split(".")[0];
+        const folderName = urlParts.pop();
+        if (fileName && folderName) {
+          await cloudinary.uploader.destroy(`${folderName}/${fileName}`).catch(() => {});
+        }
+      }
+
+      gambarProduk = uploadResult.secure_url;
+    } catch (error) {
+      console.error("Error uploading to Cloudinary:", error);
+      return { error: "Gagal mengunggah gambar ke server." };
     }
-    gambarProduk = `/uploads/tinta/${namaFile}`;
   }
 
   const data = {
@@ -92,8 +112,14 @@ export async function hapusTinta(id: number): Promise<{ error?: string }> {
   });
   if (masihDipinjam) return { error: "Tinta ini masih dalam status dipinjam dan tidak bisa dihapus." };
 
-  if (tinta.gambarProduk) {
-    await unlink(path.join(process.cwd(), "public", tinta.gambarProduk)).catch(() => {});
+  // Hapus gambar dari Cloudinary
+  if (tinta.gambarProduk && tinta.gambarProduk.includes("cloudinary.com")) {
+    const urlParts = tinta.gambarProduk.split("/");
+    const fileName = urlParts.pop()?.split(".")[0];
+    const folderName = urlParts.pop();
+    if (fileName && folderName) {
+      await cloudinary.uploader.destroy(`${folderName}/${fileName}`).catch(() => {});
+    }
   }
 
   await prisma.tinta.delete({ where: { id } });
