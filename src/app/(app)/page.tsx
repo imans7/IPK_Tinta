@@ -94,10 +94,10 @@ export default async function DashboardPage({
       <RiwayatFilter periode={periode} cari={cari} />
 
       <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-x-auto mb-3">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead>
             <tr className="text-left text-neutral-400 text-xs border-b border-neutral-800">
-              <Th>Tanggal Pinjam</Th><Th>Operator</Th><Th>Cetakan</Th><Th>Berat Dipinjam</Th>
+              <Th>Tanggal Pinjam</Th><Th>Operator</Th><Th>Cetakan</Th><Th>Jumlah Cetak</Th><Th>Berat Dipinjam</Th>
               <Th>Berat Kembali</Th><Th>Terpakai</Th><Th>Komposisi Warna</Th><Th>Status</Th>
             </tr>
           </thead>
@@ -107,6 +107,7 @@ export default async function DashboardPage({
                 <td className="px-4 py-2.5">{formatTanggal(trx.tanggalPinjam)}</td>
                 <td className="px-4 py-2.5">{trx.namaPeminjam}</td>
                 <td className="px-4 py-2.5">{trx.tinta.namaCetakan}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{trx.jumlahCetak != null ? trx.jumlahCetak.toLocaleString("id-ID") : "—"}</td>
                 <td className="px-4 py-2.5">{toNumber(trx.beratPinjam)} kg</td>
                 <td className="px-4 py-2.5">{trx.beratKembali != null ? `${toNumber(trx.beratKembali)} kg` : "—"}</td>
                 <td className="px-4 py-2.5">{trx.beratTerpakai != null ? `${toNumber(trx.beratTerpakai)} kg` : "—"}</td>

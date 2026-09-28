@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_LINKS, isActive } from "./nav-links";
+import { linkUntuk, isActive, type UserNav } from "./nav-links";
+import UserBox from "./UserBox";
 
-export default function Sidebar() {
+export default function Sidebar({ user }: { user: UserNav }) {
   const pathname = usePathname();
 
   return (
@@ -12,7 +13,7 @@ export default function Sidebar() {
       <div className="px-2.5 pt-1.5 pb-5 text-[15px] font-semibold">
         Gudang<span className="text-amber-400">Tinta</span>
       </div>
-      {NAV_LINKS.map((l) => {
+      {linkUntuk(user.role).map((l) => {
         const active = isActive(pathname, l.href);
         return (
           <Link
@@ -26,6 +27,7 @@ export default function Sidebar() {
           </Link>
         );
       })}
+      <UserBox user={user} />
     </nav>
   );
 }

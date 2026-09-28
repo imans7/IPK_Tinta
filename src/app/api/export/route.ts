@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { komposisiRingkas, toNumber } from "@/lib/format";
 import ExcelJS from "exceljs";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
+  if (!(await getCurrentUser())) return NextResponse.json({ error: "Belum login." }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const periode = searchParams.get("periode") ?? "6";
   const cari = searchParams.get("cari") ?? "";
@@ -27,6 +30,7 @@ export async function GET(req: NextRequest) {
     { header: "Operator", key: "operator", width: 14 },
     { header: "Customer", key: "customer", width: 20 },
     { header: "Cetakan", key: "cetakan", width: 24 },
+    { header: "Jumlah Cetak", key: "jumlahCetak", width: 14 },
     { header: "Berat Dipinjam (Kg)", key: "pinjam", width: 16 },
     { header: "Berat Kembali (Kg)", key: "kembali", width: 16 },
     { header: "Terpakai (Kg)", key: "terpakai", width: 14 },
@@ -41,6 +45,7 @@ export async function GET(req: NextRequest) {
       operator: trx.namaPeminjam,
       customer: trx.tinta.namaCustomer,
       cetakan: trx.tinta.namaCetakan,
+      jumlahCetak: trx.jumlahCetak ?? "-",
       pinjam: toNumber(trx.beratPinjam),
       kembali: trx.beratKembali != null ? toNumber(trx.beratKembali) : "-",
       terpakai: trx.beratTerpakai != null ? toNumber(trx.beratTerpakai) : "-",

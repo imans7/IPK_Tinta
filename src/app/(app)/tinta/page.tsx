@@ -3,12 +3,16 @@ import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import TintaTable from "./TintaTable";
 import TintaFilter from "./TintaFilter";
+import { wajibLogin } from "@/lib/auth";
 
 export default async function DaftarTintaPage({
   searchParams,
 }: {
   searchParams: { cari?: string; customer?: string };
 }) {
+  const user = await wajibLogin();
+  const isAdmin = user.role === "admin";
+
   const cari = searchParams.cari ?? "";
   const customer = searchParams.customer ?? "";
 
@@ -51,12 +55,14 @@ export default async function DaftarTintaPage({
 
       <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
         <TintaFilter customers={semuaCustomer.map((c) => c.namaCustomer)} cari={cari} customer={customer} />
-        <Link
-          href="/tinta/tambah"
-          className="text-center px-4 py-3 sm:py-2 rounded-lg bg-amber-400 text-neutral-900 font-semibold text-sm whitespace-nowrap"
-        >
-          + Tambah Tinta
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/tinta/tambah"
+            className="text-center px-4 py-3 sm:py-2 rounded-lg bg-amber-400 text-neutral-900 font-semibold text-sm whitespace-nowrap"
+          >
+            + Tambah Tinta
+          </Link>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3 text-xs text-neutral-500 mb-4">
@@ -70,7 +76,7 @@ export default async function DaftarTintaPage({
         )}
       </div>
 
-      <TintaTable daftar={daftar} />
+      <TintaTable daftar={daftar} bisaKelola={isAdmin} />
     </div>
   );
 }

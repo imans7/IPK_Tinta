@@ -50,6 +50,7 @@ model TransaksiPeminjaman {
   id             Int              @id @default(autoincrement())
   tintaId        Int              @map("tinta_id")
   namaPeminjam   String           @map("nama_peminjam") // nama operator
+  jumlahCetak    Int?             @map("jumlah_cetak") // jumlah yang akan dicetak; kosong pada data lama
   beratPinjam    Decimal          @map("berat_pinjam") @db.Decimal(8, 2) // stok saat dipinjam
   beratKembali   Decimal?         @map("berat_kembali") @db.Decimal(8, 2) // hasil timbang ulang
   beratTerpakai  Decimal?         @map("berat_terpakai") @db.Decimal(8, 2) // beratPinjam - beratKembali
@@ -62,4 +63,26 @@ model TransaksiPeminjaman {
 
   @@index([status, tanggalPinjam])
   @@map("transaksi_peminjamans")
+}
+
+enum Role {
+  admin
+  operator
+}
+
+// Akun pengguna. TIDAK ada halaman/endpoint pendaftaran: akun dibuat lewat
+// skrip CLI (scripts/buat-akun.ts) yang hanya bisa dijalankan developer di server.
+model User {
+  id             Int       @id @default(autoincrement())
+  username       String    @unique
+  nama           String
+  passwordHash   String    @map("password_hash")
+  role           Role      @default(operator)
+  aktif          Boolean   @default(true)
+  gagalLogin     Int       @default(0) @map("gagal_login")
+  terkunciSampai DateTime? @map("terkunci_sampai")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
 }

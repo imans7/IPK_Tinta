@@ -10,7 +10,7 @@ type TintaDenganKomposisi = Tinta & { komposisi: KomposisiTinta[] };
 
 const menipis = (t: Tinta) => toNumber(t.jumlahStock) <= AMBANG_STOK_HABIS;
 
-export default function TintaTable({ daftar }: { daftar: TintaDenganKomposisi[] }) {
+export default function TintaTable({ daftar, bisaKelola }: { daftar: TintaDenganKomposisi[]; bisaKelola: boolean }) {
   const [lihatFoto, setLihatFoto] = useState<TintaDenganKomposisi | null>(null);
   const [konfirmasiHapus, setKonfirmasiHapus] = useState<TintaDenganKomposisi | null>(null);
   const [errorHapus, setErrorHapus] = useState<string | null>(null);
@@ -81,6 +81,8 @@ export default function TintaTable({ daftar }: { daftar: TintaDenganKomposisi[] 
                     >
                       🖼
                     </button>
+                    {bisaKelola && (
+                      <>
                     <Link
                       href={`/tinta/${t.id}/edit`}
                       title="Edit"
@@ -95,6 +97,8 @@ export default function TintaTable({ daftar }: { daftar: TintaDenganKomposisi[] 
                     >
                       🗑
                     </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -151,16 +155,20 @@ export default function TintaTable({ daftar }: { daftar: TintaDenganKomposisi[] 
                   Stok habis
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${bisaKelola ? "grid-cols-3" : "grid-cols-1"}`}>
               <button onClick={() => setLihatFoto(t)} className="h-10 rounded-lg border border-neutral-700 text-sm text-neutral-300">
                 🖼 Foto
               </button>
+              {bisaKelola && (
+                <>
               <Link href={`/tinta/${t.id}/edit`} className="h-10 flex items-center justify-center rounded-lg border border-neutral-700 text-sm text-neutral-300">
                 ✎ Edit
               </Link>
               <button onClick={() => setKonfirmasiHapus(t)} className="h-10 rounded-lg border border-neutral-700 text-sm text-red-400">
                 🗑 Hapus
               </button>
+                </>
+              )}
               </div>
             </div>
           </div>

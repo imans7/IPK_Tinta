@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { NAV_LINKS, isActive } from "./nav-links";
+import { linkUntuk, isActive, type UserNav } from "./nav-links";
+import UserBox from "./UserBox";
 
-export default function MobileNav() {
+export default function MobileNav({ user }: { user: UserNav }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -43,7 +44,7 @@ export default function MobileNav() {
                 ✕
               </button>
             </div>
-            {NAV_LINKS.map((l) => {
+            {linkUntuk(user.role).map((l) => {
               const active = isActive(pathname, l.href);
               return (
                 <Link
@@ -57,6 +58,7 @@ export default function MobileNav() {
                 </Link>
               );
             })}
+            <UserBox user={user} />
           </div>
         </div>
       )}

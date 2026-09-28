@@ -8,11 +8,12 @@ import type { Tinta, KomposisiTinta } from "@prisma/client";
 // jumlahStock bisa Decimal (hasil pencarian) atau number (dari halaman server) — toNumber() menangani keduanya.
 type TintaPilihan = Omit<Tinta, "jumlahStock"> & { jumlahStock: unknown; komposisi: KomposisiTinta[] };
 
-export default function PeminjamanForm({ awal }: { awal: TintaPilihan | null }) {
+export default function PeminjamanForm({ awal, namaDefault }: { awal: TintaPilihan | null; namaDefault: string }) {
   const [cari, setCari] = useState("");
   const [hasil, setHasil] = useState<TintaPilihan[]>([]);
   const [terpilih, setTerpilih] = useState<TintaPilihan | null>(awal);
-  const [namaPeminjam, setNamaPeminjam] = useState("");
+  const [namaPeminjam, setNamaPeminjam] = useState(namaDefault); // diisi otomatis dengan nama akun yang login
+  const [jumlahCetak, setJumlahCetak] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sukses, setSukses] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -38,14 +39,20 @@ export default function PeminjamanForm({ awal }: { awal: TintaPilihan | null }) 
   function submit() {
     if (!terpilih) return;
     setError(null);
+
+    const cetak = Number(jumlahCetak);
+    if (jumlahCetak.trim() === "") return setError("Jumlah cetak wajib diisi.");
+    if (!Number.isInteger(cetak) || cetak < 1) return setError("Jumlah cetak harus berupa bilangan bulat minimal 1.");
+
     startTransition(async () => {
-      const res = await catatPeminjaman(terpilih.id, namaPeminjam);
+      const res = await catatPeminjaman(terpilih.id, namaPeminjam, cetak);
       if (res.error) {
         setError(res.error);
       } else {
-        setSukses(`Peminjaman ${terpilih.namaCetakan} oleh ${namaPeminjam} berhasil dicatat.`);
+        setSukses(`Peminjaman ${terpilih.namaCetakan} oleh ${namaPeminjam} (jumlah cetak ${cetak.toLocaleString("id-ID")}) berhasil dicatat.`);
         setTerpilih(null);
-        setNamaPeminjam("");
+        setNamaPeminjam(namaDefault);
+        setJumlahCetak("");
         // hapus ?tinta=ID dari alamat supaya refresh tidak memilih tinta yang sama lagi
         window.history.replaceState(null, "", "/peminjaman");
       }
@@ -142,16 +149,31 @@ export default function PeminjamanForm({ awal }: { awal: TintaPilihan | null }) 
               </div>
             )}
 
-            <div>
-              <label className="block text-xs text-neutral-400 mb-1.5">Nama Peminjam (Operator)</label>
-              <input
-                value={namaPeminjam}
-                onChange={(e) => setNamaPeminjam(e.target.value)}
-                placeholder="Contoh: Budi"
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm"
-              />
-              {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-neutral-400 mb-1.5">Nama Peminjam (Operator)</label>
+                <input
+                  value={namaPeminjam}
+                  onChange={(e) => setNamaPeminjam(e.target.value)}
+                  placeholder="Contoh: Budi"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 mb-1.5">Jumlah Cetak</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={jumlahCetak}
+                  onChange={(e) => setJumlahCetak(e.target.value)}
+                  placeholder="Contoh: 5000"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
             </div>
+            {error && <p className="text-xs text-red-400 -mt-2">{error}</p>}
 
             <div className="text-xs text-amber-400 bg-amber-950/30 border border-amber-900 rounded-md px-3 py-2.5">
               ⚖ Berat yang diambil dicatat nanti saat pengembalian (ditimbang ulang), bukan saat pinjam.

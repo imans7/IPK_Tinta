@@ -142,6 +142,7 @@ async function main() {
     data: {
       tintaId: tintaByNama["Label Botol Saus"].id,
       namaPeminjam: "Budi",
+      jumlahCetak: 2500,
       beratPinjam: 0.9,
       tanggalPinjam: new Date(Date.now() - 2 * 86400000),
       status: "dipinjam",
@@ -151,24 +152,25 @@ async function main() {
     data: {
       tintaId: tintaByNama["Kemasan Mie Instan"].id,
       namaPeminjam: "Rian",
+      jumlahCetak: 1200,
       beratPinjam: 0.5,
       tanggalPinjam: new Date(Date.now() - 4 * 3600000),
       status: "dipinjam",
     },
   });
 
-  const selesai: [string, string, number, number, number][] = [
-    ["Dus Snack Kotak", "Budi", 0.9, 0.2, 8],
-    ["Kemasan Kopi Sachet", "Rian", 1.1, 0.3, 24],
-    ["Label Sabun Cair", "Sari", 2.0, 0.6, 43],
-    ["Label Botol Saus", "Agus", 0.7, 0.1, 89],
-    ["Label Minyak Goreng", "Budi", 1.2, 0.4, 95],
-    ["Kemasan Deterjen Bubuk", "Rian", 0.8, 0.15, 130],
-    ["Dus Obat Herbal", "Sari", 1.5, 0.5, 150],
-    ["Kemasan Kopi Sachet", "Agus", 0.9, 0.2, 170],
+  const selesai: [string, string, number, number, number, number][] = [
+    ["Dus Snack Kotak", "Budi", 0.9, 0.2, 8, 4000],
+    ["Kemasan Kopi Sachet", "Rian", 1.1, 0.3, 24, 2500],
+    ["Label Sabun Cair", "Sari", 2.0, 0.6, 43, 8000],
+    ["Label Botol Saus", "Agus", 0.7, 0.1, 89, 1500],
+    ["Label Minyak Goreng", "Budi", 1.2, 0.4, 95, 6000],
+    ["Kemasan Deterjen Bubuk", "Rian", 0.8, 0.15, 130, 3000],
+    ["Dus Obat Herbal", "Sari", 1.5, 0.5, 150, 5000],
+    ["Kemasan Kopi Sachet", "Agus", 0.9, 0.2, 170, 2000],
   ];
 
-  for (const [nama, peminjam, sebelum, sesudah, hariLalu] of selesai) {
+  for (const [nama, peminjam, sebelum, sesudah, hariLalu, jumlahCetak] of selesai) {
     const tinta = tintaByNama[nama];
     if (!tinta) continue;
     const tglPinjam = new Date(Date.now() - hariLalu * 86400000);
@@ -176,6 +178,7 @@ async function main() {
       data: {
         tintaId: tinta.id,
         namaPeminjam: peminjam,
+        jumlahCetak,
         beratPinjam: sebelum,
         beratKembali: sesudah,
         beratTerpakai: Number((sebelum - sesudah).toFixed(2)),

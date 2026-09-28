@@ -2,21 +2,17 @@
 
 import { prisma } from "@/lib/prisma";
 import { LOKASI_KOLOM, LOKASI_BARIS, LOKASI_KEDALAMAN } from "@/lib/lokasi";
+import { wajibLogin, wajibAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { v2 as cloudinary } from "cloudinary";
-
-// Konfigurasi Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { mkdir, writeFile, unlink } from "fs/promises";
+import path from "path";
 
 type KomposisiInput = { warnaDasar: string; persentase: number };
 
 // ---------- TINTA (tambah / edit) ----------
 
 export async function simpanTinta(formData: FormData): Promise<{ id?: number; error?: string }> {
+  await wajibAdmin(); // hanya Admin yang boleh menambah/mengubah tinta
   const idRaw = formData.get("id");
   const id = idRaw ? Number(idRaw) : null;
 
@@ -43,34 +39,20 @@ export async function simpanTinta(formData: FormData): Promise<{ id?: number; er
   const totalPersen = komposisi.reduce((sum, k) => sum + Number(k.persentase || 0), 0);
   if (totalPersen !== 100) return { error: `Total komposisi warna harus 100% (saat ini ${totalPersen}%).` };
 
-  // Upload foto ke Cloudinary
+  // Upload foto (kalau ada file baru dipilih)
   let gambarProduk = String(formData.get("fotoLama") ?? "") || null;
   const foto = formData.get("foto") as File | null;
-  
   if (foto && foto.size > 0) {
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "tinta");
+    await mkdir(uploadDir, { recursive: true });
+    const namaFile = `${Date.now()}-${foto.name.replace(/\s+/g, "-")}`;
     const buffer = Buffer.from(await foto.arrayBuffer());
-    const base64Image = `data:${foto.type};base64,${buffer.toString("base64")}`;
+    await writeFile(path.join(uploadDir, namaFile), buffer);
 
-    try {
-      const uploadResult = await cloudinary.uploader.upload(base64Image, {
-        folder: "gudang_tinta",
-      });
-
-      // Jika ada gambar lama dan itu dari Cloudinary, hapus gambar lamanya
-      if (gambarProduk && gambarProduk.includes("cloudinary.com")) {
-        const urlParts = gambarProduk.split("/");
-        const fileName = urlParts.pop()?.split(".")[0];
-        const folderName = urlParts.pop();
-        if (fileName && folderName) {
-          await cloudinary.uploader.destroy(`${folderName}/${fileName}`).catch(() => {});
-        }
-      }
-
-      gambarProduk = uploadResult.secure_url;
-    } catch (error) {
-      console.error("Error uploading to Cloudinary:", error);
-      return { error: "Gagal mengunggah gambar ke server." };
+    if (gambarProduk) {
+      await unlink(path.join(process.cwd(), "public", gambarProduk)).catch(() => {});
     }
+    gambarProduk = `/uploads/tinta/${namaFile}`;
   }
 
   const data = {
@@ -101,6 +83,7 @@ export async function simpanTinta(formData: FormData): Promise<{ id?: number; er
 }
 
 export async function hapusTinta(id: number): Promise<{ error?: string }> {
+  await wajibAdmin(); // hanya Admin yang boleh menghapus tinta
   const tinta = await prisma.tinta.findUnique({ where: { id } });
   if (!tinta) return { error: "Tinta tidak ditemukan." };
 
@@ -109,14 +92,8 @@ export async function hapusTinta(id: number): Promise<{ error?: string }> {
   });
   if (masihDipinjam) return { error: "Tinta ini masih dalam status dipinjam dan tidak bisa dihapus." };
 
-  // Hapus gambar dari Cloudinary
-  if (tinta.gambarProduk && tinta.gambarProduk.includes("cloudinary.com")) {
-    const urlParts = tinta.gambarProduk.split("/");
-    const fileName = urlParts.pop()?.split(".")[0];
-    const folderName = urlParts.pop();
-    if (fileName && folderName) {
-      await cloudinary.uploader.destroy(`${folderName}/${fileName}`).catch(() => {});
-    }
+  if (tinta.gambarProduk) {
+    await unlink(path.join(process.cwd(), "public", tinta.gambarProduk)).catch(() => {});
   }
 
   await prisma.tinta.delete({ where: { id } });
@@ -129,6 +106,7 @@ export async function hapusTinta(id: number): Promise<{ error?: string }> {
 // ---------- PEMINJAMAN ----------
 
 export async function cariTinta(keyword: string) {
+  await wajibLogin();
   if (!keyword.trim()) return [];
 
   return prisma.tinta.findMany({
@@ -144,8 +122,17 @@ export async function cariTinta(keyword: string) {
   });
 }
 
-export async function catatPeminjaman(tintaId: number, namaPeminjam: string): Promise<{ error?: string }> {
+export async function catatPeminjaman(
+  tintaId: number,
+  namaPeminjam: string,
+  jumlahCetak: number
+): Promise<{ error?: string }> {
+  await wajibLogin();
+
   if (!namaPeminjam.trim()) return { error: "Nama peminjam wajib diisi." };
+  if (!Number.isInteger(jumlahCetak) || jumlahCetak < 1 || jumlahCetak > 2_000_000_000) {
+    return { error: "Jumlah cetak harus berupa bilangan bulat minimal 1." };
+  }
 
   const tinta = await prisma.tinta.findUnique({ where: { id: tintaId } });
   if (!tinta) return { error: "Tinta tidak ditemukan." };
@@ -155,7 +142,8 @@ export async function catatPeminjaman(tintaId: number, namaPeminjam: string): Pr
     data: {
       tintaId,
       namaPeminjam: namaPeminjam.trim(),
-      beratPinjam: tinta.jumlahStock,
+      jumlahCetak,
+      beratPinjam: tinta.jumlahStock, // diambil otomatis dari stok saat ini, operator tidak input berat
       tanggalPinjam: new Date(),
       status: "dipinjam",
     },
@@ -173,6 +161,7 @@ export async function konfirmasiPengembalian(
   transaksiId: number,
   beratKembali: number
 ): Promise<{ error?: string }> {
+  await wajibLogin();
   const trx = await prisma.transaksiPeminjaman.findUnique({ where: { id: transaksiId } });
   if (!trx) return { error: "Transaksi tidak ditemukan." };
   if (Number.isNaN(beratKembali) || beratKembali < 0) return { error: "Berat hasil timbang tidak valid." };

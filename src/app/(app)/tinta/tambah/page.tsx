@@ -1,6 +1,11 @@
+import { redirect } from "next/navigation";
+import { wajibLogin } from "@/lib/auth";
 import TintaForm from "../TintaForm";
 
-export default function TambahTintaPage() {
+export default async function TambahTintaPage() {
+  const user = await wajibLogin();
+  if (user.role !== "admin") redirect("/tinta"); // khusus Admin
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-xl font-semibold mb-1">Tambah Tinta Baru</h1>
