@@ -104,7 +104,7 @@ async function main() {
     });
     console.log(`\n✅ Password akun "${username}" berhasil diganti dan akun telah di-unlock!\n`);
   } else {
-    await prisma.user.create({ data: { username, nama, passwordHash, role } });
+    await prisma.user.create({ data: { username, nama, passwordHash, role: role as "admin" | "operator" } });
     console.log(`\n✅ Akun baru dengan role [${role.toUpperCase()}] berhasil dibuat!`);
     console.log(`Username : ${username}`);
     console.log(`Nama     : ${nama}\n`);
